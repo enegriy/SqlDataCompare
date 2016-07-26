@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlDataCompare.Core", "SqlDataCompare.Core\SqlDataCompare.Core.csproj", "{C1E4A611-8E44-4A9E-9C15-49045B1115DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlDataCompare.Test", "SqlDataCompare.Test\SqlDataCompare.Test.csproj", "{661F2279-71EC-4623-8B2D-7826F35BF10E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C1E4A611-8E44-4A9E-9C15-49045B1115DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1E4A611-8E44-4A9E-9C15-49045B1115DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1E4A611-8E44-4A9E-9C15-49045B1115DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1E4A611-8E44-4A9E-9C15-49045B1115DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{661F2279-71EC-4623-8B2D-7826F35BF10E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{661F2279-71EC-4623-8B2D-7826F35BF10E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{661F2279-71EC-4623-8B2D-7826F35BF10E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{661F2279-71EC-4623-8B2D-7826F35BF10E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
