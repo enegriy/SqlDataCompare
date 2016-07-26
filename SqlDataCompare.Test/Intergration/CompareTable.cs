@@ -10,8 +10,8 @@ namespace SqlDataCompare.Test.Intergration
 		[Test]
 		public void CompareTable_IsNotEmpty_Test()
 		{
-			DetailsToConnect detailsToConnectSource = new DetailsToConnect("192.168.0.22", "RI_BankGuarantee", "sa", "456P@ssw0rd");
-			DetailsToConnect detailsToConnectTarget = new DetailsToConnect("192.168.0.22", "RI_BankGuarantee_PROD_COPY", "sa", "456P@ssw0rd");
+			DetailsToConnect detailsToConnectSource = new DetailsToConnect("WIN-9KGOLTFA5EP", "Messanger", "sa", "123456");
+			DetailsToConnect detailsToConnectTarget = new DetailsToConnect("WIN-9KGOLTFA5EP", "Test", "sa", "123456");
 
 			var connectionStringMakerSource = new ConnectionStringMaker(detailsToConnectSource);
 			var connectionStringMakerTarget = new ConnectionStringMaker(detailsToConnectTarget);
@@ -19,14 +19,16 @@ namespace SqlDataCompare.Test.Intergration
 			ISqlConnection sqlConnectionSource = new SqlServerConnection(connectionStringMakerSource.GetConnectionString());
 			ISqlConnection sqlConnectionTarget = new SqlServerConnection(connectionStringMakerTarget.GetConnectionString());
 
-			IDatabaseProvider databaseProviderSource = new DataBaseProvider(sqlConnectionSource);
-			IDatabaseProvider databaseProviderTarget = new DataBaseProvider(sqlConnectionTarget);
+			IDatabaseMetadata databaseMetadataSource = new DatabaseMetadata(sqlConnectionSource);
+			IDatabaseMetadata databaseMetadataTarget = new DatabaseMetadata(sqlConnectionTarget);
 
-			var tablesSource = databaseProviderSource.GetTables();
-			var tablesTarget = databaseProviderTarget.GetTables();
+			var tablesSource = databaseMetadataSource.GetTables();
+			var tablesTarget = databaseMetadataTarget.GetTables();
 
 			var compareTableManager = new CompareTableManager(sqlConnectionSource, sqlConnectionTarget);
+
 			var listTable = compareTableManager.CompareTable(tablesSource, tablesTarget);
+			var resultCompare = compareTableManager.CompareTableData(listTable);
 
 			Assert.IsNotEmpty(listTable);
 		}

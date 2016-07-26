@@ -1,12 +1,11 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace SqlDataCompare.Core
 {
 	/// <summary>
 	/// Интерфейс для провайдера доступа к бд
 	/// </summary>
-	public interface IDatabaseProvider
+	public interface IDatabaseMetadata
 	{
 		/// <summary>
 		/// Список таблиц

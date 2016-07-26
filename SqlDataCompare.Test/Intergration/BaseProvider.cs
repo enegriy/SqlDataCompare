@@ -13,9 +13,9 @@ namespace SqlDataCompare.Test.Intergration
 			var connectionStringMaker = new ConnectionStringMaker(detailsToConnect);
 
 			ISqlConnection sqlConnection = new SqlServerConnection(connectionStringMaker.GetConnectionString());
-			IDatabaseProvider databaseProvider = new DataBaseProvider(sqlConnection);
+			IDatabaseMetadata databaseMetadata = new DatabaseMetadata(sqlConnection);
 
-			Assert.IsNotEmpty(databaseProvider.GetTables());
+			Assert.IsNotEmpty(databaseMetadata.GetTables());
 		}
 	}
 }

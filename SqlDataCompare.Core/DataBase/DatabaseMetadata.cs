@@ -5,7 +5,7 @@ namespace SqlDataCompare.Core
 	/// <summary>
 	/// Провайдер для базы данных
 	/// </summary>
-	public class DataBaseProvider : IDatabaseProvider
+	public class DatabaseMetadata : IDatabaseMetadata
 	{
 		private readonly ISqlConnection _sqlConnection;
 		private readonly SelectManager _selectManager;
@@ -13,7 +13,7 @@ namespace SqlDataCompare.Core
 		/// <summary>
 		/// .Ctor
 		/// </summary>
-		public DataBaseProvider(ISqlConnection sqlConnection)
+		public DatabaseMetadata(ISqlConnection sqlConnection)
 		{
 			_sqlConnection = sqlConnection;
 			_selectManager = new SelectManager(_sqlConnection);
