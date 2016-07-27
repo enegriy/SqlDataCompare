@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace SqlDataCompare.Core
@@ -12,8 +11,8 @@ namespace SqlDataCompare.Core
 	/// </summary>
 	public class CompareTableManager
 	{
-		private ISqlConnection _sqlConnectionSource;
-		private ISqlConnection _sqlConnectionTarget;
+		private readonly ISqlConnection _sqlConnectionSource;
+		private readonly ISqlConnection _sqlConnectionTarget;
 
 		public CompareTableManager(ISqlConnection sqlConnectionSource, ISqlConnection sqlConnectionTarget)
 		{
@@ -52,43 +51,61 @@ namespace SqlDataCompare.Core
 			}
 		}
 
-
-		public string CompareTableData(IEnumerable<string> tableNames)
+		public string CompareTablesData(IEnumerable<string> tableNames)
 		{
-			var sb = new StringBuilder();
-
-			var selectManagerSource = new SelectManager(_sqlConnectionSource);
-			var selectManagerTarget = new SelectManager(_sqlConnectionTarget);
-
 			IDatabaseMetadata databaseMetadata = new DatabaseMetadata(_sqlConnectionSource);
 
 			foreach (var table in tableNames)
 			{
 				var keyColumns = databaseMetadata.GetKeyColumnsByTable(table);
 				var keyColumnsString = string.Join(" + ", keyColumns);
-				Type typeColumn = typeof (string);
 
+				Type typeColumn = typeof (string);
 				if (keyColumns.Count() == 1)
 				{
 					typeColumn = databaseMetadata.GetColumnType(table, keyColumns.First());
 				}
-				var sql = "select " + keyColumnsString + " from " + table;
 
-				dynamic selectManager = GetSelectManager(typeColumn);
-
-				IEnumerable<string> listKeyValuesSource = selectManager.Select(_sqlConnectionSource, sql);
-				IEnumerable<string> listKeyValuesTarget = selectManager.Select(_sqlConnectionTarget, sql);
-
-				var listToUpdate = Enumerable.Intersect(listKeyValuesSource, listKeyValuesTarget);
-				var listToInsert = listKeyValuesSource.Except(listKeyValuesTarget);
-				var listToDelete = listKeyValuesTarget.Except(listKeyValuesSource);
-
-				sb.AppendLine(CreateDeleteQuery(table, keyColumnsString, listToDelete));
-				sb.AppendLine(CreateInsertQuery(_sqlConnectionSource, table, keyColumnsString, listToInsert));
+				if (typeColumn == typeof(string))
+				{
+					CompareByColumnKey<string>(keyColumnsString, table);
+				}
+				if (typeColumn == typeof(int))
+				{
+					CompareByColumnKey<string>(keyColumnsString, table);
+				}
+				if (typeColumn == typeof(Guid))
+				{
+					CompareByColumnKey<string>(keyColumnsString, table);
+				}
 			}
 
-			return sb.ToString();
+			return string.Empty;
 		}
+
+		public string CompareByColumnKey<T>(string key, string table)
+		{
+			var sb = new StringBuilder();
+
+			var valuesFromTableSource = GetValuesFromTable<T>(key, table, _sqlConnectionSource);
+			var valuesFromTableTarget = GetValuesFromTable<T>(key, table, _sqlConnectionTarget);
+
+			var listKeysToUpdate = Enumerable.Intersect(valuesFromTableSource, valuesFromTableTarget);
+			var listKeysToInsert = valuesFromTableSource.Except(valuesFromTableTarget);
+			var listKeysToDelete = valuesFromTableTarget.Except(valuesFromTableSource);
+
+			sb.AppendLine(CreateDeleteQuery(table, key, listKeysToDelete));
+			sb.AppendLine(CreateInsertQuery(_sqlConnectionSource, table, key, listKeysToInsert));
+
+			return String.Empty;
+		}
+
+		private IEnumerable<T> GetValuesFromTable<T>(string key, string table,ISqlConnection connection)
+		{
+			var sql = "select " + key + " from " + table;
+			var sm = new SelectManager<T>();
+			return sm.Select(connection, sql);
+		} 
 
 		private string CreateInsertQuery(
 			ISqlConnection sqlConnectionSource, 
@@ -100,25 +117,18 @@ namespace SqlDataCompare.Core
 			try
 			{
 				IDatabaseMetadata databaseMetadata = new DatabaseMetadata(sqlConnectionSource);
-				var columns = databaseMetadata.GetColumnsByTable(table);
-				var columnsString = string.Join(", ", columns);
+
+				var dbColumns = GetColumns(table);
+				var columnsString = string.Join(", ", dbColumns.Select(x=>x.ColumnName));
 
 				sqlConnectionSource.Open();
-				SqlCommand command = new SqlCommand("select " + columnsString + "from " + table + " where " + keyColumnsString + "in (" + string.Join(",", listToInsert.Select(x=>"'"+x+"'").ToArray()) + ");");
+
+				SqlCommand command = new SqlCommand(
+					"select " + columnsString + "from " + table +
+					" where " + keyColumnsString + 
+					"in (" + string.Join(",", listToInsert.Select(x=>"'"+x+"'").ToArray()) + ");");
+
 				command.Connection = sqlConnectionSource.Connection as SqlConnection;
-				var reader = command.ExecuteReader();
-				while(reader.Read())
-				{
-					var values = new List<string>();
-
-					foreach(var column in columns)
-					{
-						var col = column.Replace("[", "").Replace("]", "");
-						values.Add(reader[col].ToString());
-					}
-
-					sb.AppendLine("INSERT INTO " + table + "(" + string.Join(",",columns) + ") VALUES (" + string.Join(",", values) + ");");
-				}
 			}
 			finally
 			{
@@ -127,10 +137,10 @@ namespace SqlDataCompare.Core
 			return sb.ToString();
 		}
 
-		private string CreateDeleteQuery(
+		private string CreateDeleteQuery<T>(
 			string table, 
 			string keyColumnsString,
-			IEnumerable<string >listToDelete)
+			IEnumerable<T>listToDelete)
 		{
 			StringBuilder sb = new StringBuilder();
 			foreach(var keyDelete in listToDelete)
@@ -145,6 +155,22 @@ namespace SqlDataCompare.Core
 			var genericListType = typeof(SelectManager<>);
 			var specificListType = genericListType.MakeGenericType(typeKeyColumn);
 			return Activator.CreateInstance(specificListType);
+		}
+
+		private IEnumerable<DbColumn> GetColumns(string table)
+		{
+			IDatabaseMetadata databaseMetadata = new DatabaseMetadata(_sqlConnectionSource);
+
+			var columnsNames = databaseMetadata.GetColumnsByTable(table);
+			IList<DbColumn> dbColumns = new List<DbColumn>();
+			foreach (var columnName in columnsNames)
+			{
+				DbColumn dbColumn = new DbColumn();
+				dbColumn.ColumnName = columnName;
+				dbColumn.ColumnType = databaseMetadata.GetColumnType(table, columnName);
+				dbColumns.Add(dbColumn);
+			}
+			return dbColumns;
 		} 
 	}
 }

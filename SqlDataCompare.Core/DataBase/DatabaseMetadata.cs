@@ -48,7 +48,7 @@ namespace SqlDataCompare.Core
 		public Type GetColumnType(string table, string column)
 		{
 			var sql =
-				$" SELECT DATA_TYPE FROM [RI_BankGuarantee].INFORMATION_SCHEMA.COLUMNS where '['+TABLE_SCHEMA + '].[' + TABLE_NAME+']' = '{table}' AND '['+COLUMN_NAME+']' = '{column}'";
+				$" SELECT DATA_TYPE FROM {_sqlConnection.Database}.INFORMATION_SCHEMA.COLUMNS where '['+TABLE_SCHEMA + '].[' + TABLE_NAME+']' = '{table}' AND '['+COLUMN_NAME+']' = '{column}'";
 			var column_type =  _selectManager.SelectFirstColumn<string>(sql).FirstOrDefault();
 
 			if (column_type.Equals("uniqueidentifier"))

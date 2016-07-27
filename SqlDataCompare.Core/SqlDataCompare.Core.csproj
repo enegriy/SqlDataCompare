@@ -41,6 +41,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compare\CompareTableManager.cs" />
+    <Compile Include="Compare\DbColumn.cs" />
+    <Compile Include="Compare\DbValue.cs" />
     <Compile Include="ConnectToServer\CheckValidConnectionString.cs" />
     <Compile Include="ConnectToServer\ConnectionStringMaker.cs" />
     <Compile Include="ConnectToServer\DetailsToConnect.cs" />

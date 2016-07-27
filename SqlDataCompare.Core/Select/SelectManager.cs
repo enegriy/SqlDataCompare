@@ -9,7 +9,7 @@ namespace SqlDataCompare.Core
 	/// </summary>
 	public class SelectManager
 	{
-		ISqlConnection _sqlConnection;
+		readonly ISqlConnection _sqlConnection;
 
 		public SelectManager(ISqlConnection sqlConnection)
 		{
@@ -47,10 +47,9 @@ namespace SqlDataCompare.Core
 	/// </summary>
 	public class SelectManager<T>
 	{
-		public IEnumerable<string> Select(ISqlConnection sqlConnection, string sql)
+		public IEnumerable<T> Select(ISqlConnection sqlConnection, string sql)
 		{
-			var list = new SelectManager(sqlConnection).SelectFirstColumn<T>(sql);
-			return list.Select(x=>x.ToString());
+			return new SelectManager(sqlConnection).SelectFirstColumn<T>(sql);
 		}
 	}
 }
