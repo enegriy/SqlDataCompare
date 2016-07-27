@@ -10,8 +10,8 @@ namespace SqlDataCompare.Test.Intergration
 		[Test]
 		public void CompareTable_IsNotEmpty_Test()
 		{
-			DetailsToConnect detailsToConnectSource = new DetailsToConnect("WIN-9KGOLTFA5EP", "Messanger", "sa", "123456");
-			DetailsToConnect detailsToConnectTarget = new DetailsToConnect("WIN-9KGOLTFA5EP", "Test", "sa", "123456");
+			DetailsToConnect detailsToConnectSource = new DetailsToConnect("192.168.0.22", "RI_BankGuarantee", "sa", "456P@ssw0rd");
+			DetailsToConnect detailsToConnectTarget = new DetailsToConnect("192.168.0.22", "RI_BankGuarantee_PROD_COPY", "sa", "456P@ssw0rd");
 
 			var connectionStringMakerSource = new ConnectionStringMaker(detailsToConnectSource);
 			var connectionStringMakerTarget = new ConnectionStringMaker(detailsToConnectTarget);

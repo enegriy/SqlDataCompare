@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace SqlDataCompare.Core
 {
@@ -19,5 +20,9 @@ namespace SqlDataCompare.Core
 		/// Ключевые колонки
 		/// </summary>
 		IEnumerable<string> GetKeyColumnsByTable(string table);
+		/// <summary>
+		/// Тип колонки
+		/// </summary>
+		Type GetColumnType(string table, string column);
 	}
 }

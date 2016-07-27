@@ -1,6 +1,6 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Linq;
 
 namespace SqlDataCompare.Core
 {
@@ -39,6 +39,18 @@ namespace SqlDataCompare.Core
 				_sqlConnection.Close();
 			}
 			return list;
+		}
+	}
+
+	/// <summary>
+	///  Выборка
+	/// </summary>
+	public class SelectManager<T>
+	{
+		public IEnumerable<string> Select(ISqlConnection sqlConnection, string sql)
+		{
+			var list = new SelectManager(sqlConnection).SelectFirstColumn<T>(sql);
+			return list.Select(x=>x.ToString());
 		}
 	}
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace SqlDataCompare.Core
@@ -65,15 +66,22 @@ namespace SqlDataCompare.Core
 			{
 				var keyColumns = databaseMetadata.GetKeyColumnsByTable(table);
 				var keyColumnsString = string.Join(" + ", keyColumns);
+				Type typeColumn = typeof (string);
 
-				var sql = "select " + keyColumnsString + " from [" + table +"]";
+				if (keyColumns.Count() == 1)
+				{
+					typeColumn = databaseMetadata.GetColumnType(table, keyColumns.First());
+				}
+				var sql = "select " + keyColumnsString + " from " + table;
 
-				var listValuesSource = selectManagerSource.SelectFirstColumn<string>(sql);
-				var listValuesTarget = selectManagerTarget.SelectFirstColumn<string>(sql);
+				dynamic selectManager = GetSelectManager(typeColumn);
 
-				var listToUpdate = Enumerable.Intersect(listValuesSource, listValuesTarget);
-				var listToInsert = listValuesSource.Except(listValuesTarget);
-				var listToDelete = listValuesTarget.Except(listValuesSource);
+				IEnumerable<string> listKeyValuesSource = selectManager.Select(_sqlConnectionSource, sql);
+				IEnumerable<string> listKeyValuesTarget = selectManager.Select(_sqlConnectionTarget, sql);
+
+				var listToUpdate = Enumerable.Intersect(listKeyValuesSource, listKeyValuesTarget);
+				var listToInsert = listKeyValuesSource.Except(listKeyValuesTarget);
+				var listToDelete = listKeyValuesTarget.Except(listKeyValuesSource);
 
 				sb.AppendLine(CreateDeleteQuery(table, keyColumnsString, listToDelete));
 				sb.AppendLine(CreateInsertQuery(_sqlConnectionSource, table, keyColumnsString, listToInsert));
@@ -89,14 +97,14 @@ namespace SqlDataCompare.Core
 			IEnumerable<string> listToInsert)
 		{
 			StringBuilder sb = new StringBuilder();
-			sqlConnectionSource.Open();
 			try
 			{
 				IDatabaseMetadata databaseMetadata = new DatabaseMetadata(sqlConnectionSource);
 				var columns = databaseMetadata.GetColumnsByTable(table);
 				var columnsString = string.Join(", ", columns);
 
-				SqlCommand command = new SqlCommand("select " + columnsString + "from " + table + " where " + keyColumnsString + "in (" + string.Join(",", listToInsert) + ");");
+				sqlConnectionSource.Open();
+				SqlCommand command = new SqlCommand("select " + columnsString + "from " + table + " where " + keyColumnsString + "in (" + string.Join(",", listToInsert.Select(x=>"'"+x+"'").ToArray()) + ");");
 				command.Connection = sqlConnectionSource.Connection as SqlConnection;
 				var reader = command.ExecuteReader();
 				while(reader.Read())
@@ -105,10 +113,11 @@ namespace SqlDataCompare.Core
 
 					foreach(var column in columns)
 					{
-						values.Add(reader[column].ToString());
+						var col = column.Replace("[", "").Replace("]", "");
+						values.Add(reader[col].ToString());
 					}
 
-					sb.AppendLine("INSERT INTO " + table + "(" + columns + ") VALUES (" + string.Join(",", values) + ");");
+					sb.AppendLine("INSERT INTO " + table + "(" + string.Join(",",columns) + ") VALUES (" + string.Join(",", values) + ");");
 				}
 			}
 			finally
@@ -130,5 +139,12 @@ namespace SqlDataCompare.Core
 			}
 			return sb.ToString();
 		}
+
+		private object GetSelectManager(Type typeKeyColumn)
+		{
+			var genericListType = typeof(SelectManager<>);
+			var specificListType = genericListType.MakeGenericType(typeKeyColumn);
+			return Activator.CreateInstance(specificListType);
+		} 
 	}
 }

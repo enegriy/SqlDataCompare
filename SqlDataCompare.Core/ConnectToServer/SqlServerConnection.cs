@@ -1,4 +1,5 @@
 ﻿
+using System.Data;
 using System.Data.SqlClient;
 
 namespace SqlDataCompare.Core
@@ -44,7 +45,8 @@ namespace SqlDataCompare.Core
 		/// </summary>
 		public void Open()
 		{
-			_sqlConnection.Open();
+			if(_sqlConnection.State != ConnectionState.Open)
+				_sqlConnection.Open();
 		}
 
 		/// <summary>
@@ -52,7 +54,8 @@ namespace SqlDataCompare.Core
 		/// </summary>
 		public void Close()
 		{
-			_sqlConnection.Close();
+			if (_sqlConnection.State != ConnectionState.Closed)
+				_sqlConnection.Close();
 		}
 
 		/// <summary>
