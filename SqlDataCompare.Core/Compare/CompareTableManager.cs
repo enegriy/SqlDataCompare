@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
@@ -87,31 +88,41 @@ namespace SqlDataCompare.Core
 			var valuesToInsert = GetValuesToInsert(valuesFromTableSource, valuesFromTableTarget);
 			var valuesToUpdate = GetValuesToUpdate(valuesFromTableSource, valuesFromTableTarget);
 
-			sb.AppendLine(CreateDeleteQuery(valuesToDelete));
-			sb.AppendLine(CreateInsertQuery(valuesToInsert));
+			sb.AppendLine(CreateQueryToDelete(valuesToDelete));
+			sb.AppendLine(CreateQueryToInsert(valuesToInsert));
+			sb.AppendLine(CreateQueryToUpdate(valuesToUpdate));
 
 			return sb.ToString();
 		}
 
-		private IEnumerable<T> GetValuesToDelete<T>(
-			IEnumerable<T> valuesSource, 
-			IEnumerable<T> valuesTarget)
+		private IEnumerable<DbValue<T>> GetValuesToDelete<T>(
+			IEnumerable<DbValue<T>> valuesSource,
+			IEnumerable<DbValue<T>> valuesTarget)
 		{
-			return valuesTarget.Except(valuesSource);
+			IEnumerable<T> listTarget = valuesTarget.Select(x => x.Value).ToArray();
+			IEnumerable<T> listSource = valuesSource.Select(x => x.Value).ToArray();
+			var listExcept =  listTarget.Except(listSource);
+			return valuesTarget.Where(x => listExcept.Contains(x.Value)).ToArray();
 		}
 
-		private IEnumerable<T> GetValuesToInsert<T>(
-			IEnumerable<T> valuesSource,
-			IEnumerable<T> valuesTarget)
+		private IEnumerable<DbValue<T>> GetValuesToInsert<T>(
+			IEnumerable<DbValue<T>> valuesSource,
+			IEnumerable<DbValue<T>> valuesTarget)
 		{
-			return valuesSource.Except(valuesTarget);
+			IEnumerable<T> listTarget = valuesTarget.Select(x => x.Value).ToArray();
+			IEnumerable<T> listSource = valuesSource.Select(x => x.Value).ToArray();
+			var listExcept = listSource.Except(listTarget);
+			return valuesSource.Where(x => listExcept.Contains(x.Value)).ToArray();
 		}
 
-		private IEnumerable<T> GetValuesToUpdate<T>(
-			IEnumerable<T> valuesSource,
-			IEnumerable<T> valuesTarget)
+		private IEnumerable<DbValue<T>> GetValuesToUpdate<T>(
+			IEnumerable<DbValue<T>> valuesSource,
+			IEnumerable<DbValue<T>> valuesTarget)
 		{
-			return valuesSource.Intersect(valuesTarget);
+			IEnumerable<T> listTarget = valuesTarget.Select(x => x.Value).ToArray();
+			IEnumerable<T> listSource = valuesSource.Select(x => x.Value).ToArray();
+			var listExcept = listSource.Intersect(listTarget);
+			return valuesSource.Where(x => listExcept.Contains(x.Value)).ToArray();
 		}
 
 		private IEnumerable<DbValue<T>> GetValuesFromTable<T>(ISqlConnection connection, DbColumn dbColumn)
@@ -120,28 +131,103 @@ namespace SqlDataCompare.Core
 			var selectManager = new SelectManager(connection);
 			var listValues = selectManager.SelectFirstColumn<T>(sql);
 			return listValues.Select(x => new DbValue<T>(x, dbColumn));
-		} 
+		}
 
-		private string CreateInsertQuery<T>(IEnumerable<DbValue<T>> dbKeyValues)
+		private IEnumerable<DbValue> GetRowValues<T>(ISqlConnection connection, DbValue<T> keyValue)
 		{
-			if(!dbKeyValues.Any())
+			IList<DbValue> dbValues = new List<DbValue>();
+
+			var dbColumns = GetColumns(keyValue.Column.Table);
+			var columnsString = string.Join(", ", dbColumns.Select(x => x.ColumnName));
+
+			connection.Open();
+			try
+			{
+				SqlCommand command = new SqlCommand(
+					"select " + columnsString + "from " + keyValue.Column.Table +
+					" where " + keyValue.Column.ColumnName + " = " + keyValue.ToString() + ";");
+
+				command.Connection = connection.Connection as SqlConnection;
+
+				var reader = command.ExecuteReader();
+				while (reader.Read())
+				{
+					foreach (var dbColumn in dbColumns)
+					{
+						var col = dbColumn.ColumnName.Replace("[", "").Replace("]", "");
+						dbValues.Add(new DbValue(reader[col], dbColumn));
+					}
+				}
+			}
+			finally
+			{
+				connection.Close();
+			}
+
+			return dbValues;
+		}
+
+		private string CreateQueryToUpdate<T>(IEnumerable<DbValue<T>> dbKeyValues)
+		{
+			if (!dbKeyValues.Any())
 				return string.Empty;
 
-			StringBuilder sb = new StringBuilder();
+			var sb = new StringBuilder();
+
+			try
+			{
+				IList<DbValue> differenceValues = new List<DbValue>();
+				foreach (var keyValue in dbKeyValues)
+				{
+					var valuesSource = GetRowValues(_sqlConnectionSource, keyValue);
+					var valuesTarget = GetRowValues(_sqlConnectionTarget, keyValue);
+
+					foreach (var valueSource in valuesSource)
+					{
+						var valueTarget = valuesTarget.FirstOrDefault(x => x.Column.ColumnName.Equals(valueSource.Column.ColumnName));
+						if (valueTarget != null && valueTarget.ToString() != valueSource.ToString())
+						{
+							differenceValues.Add(valueSource);
+						}
+					}
+
+					if (differenceValues.Any())
+					{
+						sb.AppendLine("UPDATE " + keyValue.Column.Table + " SET " +
+								  string.Join(",", differenceValues.Select(x => x.Column.ColumnName + "=" + x.ToString())) + " where " +
+								  keyValue.Column.ColumnName + "=" + keyValue+";");
+
+						differenceValues.Clear();
+					}
+				}
+			}
+			finally
+			{
+				_sqlConnectionSource.Close();
+			}
+			return sb.ToString();
+		}
+
+		private string CreateQueryToInsert<T>(IEnumerable<DbValue<T>> dbKeyValues)
+		{
+			if (!dbKeyValues.Any())
+				return string.Empty;
+
+			var sb = new StringBuilder();
 			try
 			{
 				var table = dbKeyValues.First().Column.Table;
 				var keyColumn = dbKeyValues.First().Column.ColumnName;
 				var dbColumns = GetColumns(table);
 
-				var columnsString = string.Join(", ", dbColumns.Select(x=>x.ColumnName));
+				var columnsString = string.Join(", ", dbColumns.Select(x => x.ColumnName));
 
 				_sqlConnectionSource.Open();
 
 				SqlCommand command = new SqlCommand(
 					"select " + columnsString + "from " + table +
-					" where " + keyColumn + 
-					"in (" + string.Join(",", dbKeyValues.Select(x=>x.ToString())) + ");");
+					" where " + keyColumn +
+					"in (" + string.Join(",", dbKeyValues.Select(x => x.ToString())) + ");");
 
 				command.Connection = _sqlConnectionSource.Connection as SqlConnection;
 
@@ -175,10 +261,10 @@ namespace SqlDataCompare.Core
 			return sb.ToString();
 		}
 
-		private string CreateDeleteQuery<T>(IEnumerable<DbValue<T>> dbValues)
+		private string CreateQueryToDelete<T>(IEnumerable<DbValue<T>> dbKeyValues)
 		{
 			StringBuilder sb = new StringBuilder();
-			foreach(var dbValue in dbValues)
+			foreach (var dbValue in dbKeyValues)
 			{
 				sb.AppendLine("delete from " + dbValue.Column.Table + " where " + dbValue.Column.ColumnName + " = " + dbValue + ";");
 			}
