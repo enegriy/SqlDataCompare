@@ -53,108 +53,136 @@ namespace SqlDataCompare.Core
 
 		public string CompareTablesData(IEnumerable<string> tableNames)
 		{
-			IDatabaseMetadata databaseMetadata = new DatabaseMetadata(_sqlConnectionSource);
+			var databaseMetadata = new DatabaseMetadata(_sqlConnectionSource);
 
 			foreach (var table in tableNames)
 			{
 				var keyColumns = databaseMetadata.GetKeyColumnsByTable(table);
-				var keyColumnsString = string.Join(" + ", keyColumns);
+				var dbColumn = GetDbColumn(table, keyColumns);
 
-				Type typeColumn = typeof (string);
-				if (keyColumns.Count() == 1)
+				if (dbColumn.ColumnType == typeof(string))
 				{
-					typeColumn = databaseMetadata.GetColumnType(table, keyColumns.First());
+					CompareByColumnKey<string>(dbColumn);
 				}
-
-				if (typeColumn == typeof(string))
+				if (dbColumn.ColumnType == typeof(int))
 				{
-					CompareByColumnKey<string>(keyColumnsString, table);
+					CompareByColumnKey<int>(dbColumn);
 				}
-				if (typeColumn == typeof(int))
+				if (dbColumn.ColumnType == typeof(Guid))
 				{
-					CompareByColumnKey<string>(keyColumnsString, table);
-				}
-				if (typeColumn == typeof(Guid))
-				{
-					CompareByColumnKey<string>(keyColumnsString, table);
+					CompareByColumnKey<Guid>(dbColumn);
 				}
 			}
 
 			return string.Empty;
 		}
-
-		public string CompareByColumnKey<T>(string key, string table)
+		public string CompareByColumnKey<T>(DbColumn dbKeyColumn)
 		{
 			var sb = new StringBuilder();
 
-			var valuesFromTableSource = GetValuesFromTable<T>(key, table, _sqlConnectionSource);
-			var valuesFromTableTarget = GetValuesFromTable<T>(key, table, _sqlConnectionTarget);
+			var valuesFromTableSource = GetValuesFromTable<T>(_sqlConnectionSource, dbKeyColumn);
+			var valuesFromTableTarget = GetValuesFromTable<T>(_sqlConnectionTarget, dbKeyColumn);
 
-			var listKeysToUpdate = Enumerable.Intersect(valuesFromTableSource, valuesFromTableTarget);
-			var listKeysToInsert = valuesFromTableSource.Except(valuesFromTableTarget);
-			var listKeysToDelete = valuesFromTableTarget.Except(valuesFromTableSource);
+			var valuesToDelete = GetValuesToDelete(valuesFromTableSource, valuesFromTableTarget);
+			var valuesToInsert = GetValuesToInsert(valuesFromTableSource, valuesFromTableTarget);
+			var valuesToUpdate = GetValuesToUpdate(valuesFromTableSource, valuesFromTableTarget);
 
-			sb.AppendLine(CreateDeleteQuery(table, key, listKeysToDelete));
-			sb.AppendLine(CreateInsertQuery(_sqlConnectionSource, table, key, listKeysToInsert));
+			sb.AppendLine(CreateDeleteQuery(valuesToDelete));
+			sb.AppendLine(CreateInsertQuery(valuesToInsert));
 
-			return String.Empty;
+			return sb.ToString();
 		}
 
-		private IEnumerable<T> GetValuesFromTable<T>(string key, string table,ISqlConnection connection)
+		private IEnumerable<T> GetValuesToDelete<T>(
+			IEnumerable<T> valuesSource, 
+			IEnumerable<T> valuesTarget)
 		{
-			var sql = "select " + key + " from " + table;
-			var sm = new SelectManager<T>();
-			return sm.Select(connection, sql);
+			return valuesTarget.Except(valuesSource);
+		}
+
+		private IEnumerable<T> GetValuesToInsert<T>(
+			IEnumerable<T> valuesSource,
+			IEnumerable<T> valuesTarget)
+		{
+			return valuesSource.Except(valuesTarget);
+		}
+
+		private IEnumerable<T> GetValuesToUpdate<T>(
+			IEnumerable<T> valuesSource,
+			IEnumerable<T> valuesTarget)
+		{
+			return valuesSource.Intersect(valuesTarget);
+		}
+
+		private IEnumerable<DbValue<T>> GetValuesFromTable<T>(ISqlConnection connection, DbColumn dbColumn)
+		{
+			var sql = "select " + dbColumn.ColumnName + " from " + dbColumn.Table;
+			var selectManager = new SelectManager(connection);
+			var listValues = selectManager.SelectFirstColumn<T>(sql);
+			return listValues.Select(x => new DbValue<T>(x, dbColumn));
 		} 
 
-		private string CreateInsertQuery(
-			ISqlConnection sqlConnectionSource, 
-			string table, 
-			string keyColumnsString, 
-			IEnumerable<string> listToInsert)
+		private string CreateInsertQuery<T>(IEnumerable<DbValue<T>> dbKeyValues)
 		{
+			if(!dbKeyValues.Any())
+				return string.Empty;
+
 			StringBuilder sb = new StringBuilder();
 			try
 			{
-				IDatabaseMetadata databaseMetadata = new DatabaseMetadata(sqlConnectionSource);
-
+				var table = dbKeyValues.First().Column.Table;
+				var keyColumn = dbKeyValues.First().Column.ColumnName;
 				var dbColumns = GetColumns(table);
+
 				var columnsString = string.Join(", ", dbColumns.Select(x=>x.ColumnName));
 
-				sqlConnectionSource.Open();
+				_sqlConnectionSource.Open();
 
 				SqlCommand command = new SqlCommand(
 					"select " + columnsString + "from " + table +
-					" where " + keyColumnsString + 
-					"in (" + string.Join(",", listToInsert.Select(x=>"'"+x+"'").ToArray()) + ");");
+					" where " + keyColumn + 
+					"in (" + string.Join(",", dbKeyValues.Select(x=>x.ToString())) + ");");
 
-				command.Connection = sqlConnectionSource.Connection as SqlConnection;
+				command.Connection = _sqlConnectionSource.Connection as SqlConnection;
+
+				var reader = command.ExecuteReader();
+				while (reader.Read())
+				{
+					IList<DbValue> dbValues = new List<DbValue>();
+
+					foreach (var dbColumn in dbColumns)
+					{
+						var col = dbColumn.ColumnName.Replace("[", "").Replace("]", "");
+						dbValues.Add(new DbValue(reader[col], dbColumn));
+					}
+
+					IList<string> listColumn = new List<string>();
+					IList<string> listColumnValue = new List<string>();
+
+					foreach (var dbValue in dbValues)
+					{
+						listColumn.Add(dbValue.Column.ColumnName);
+						listColumnValue.Add(dbValue.ToString());
+					}
+
+					sb.AppendLine("INSERT INTO " + table + "(" + string.Join(", ", listColumn) + ") VALUES (" + string.Join(", ", listColumnValue) + ");");
+				}
 			}
 			finally
 			{
-				sqlConnectionSource.Close();
+				_sqlConnectionSource.Close();
 			}
 			return sb.ToString();
 		}
 
-		private string CreateDeleteQuery<T>(
-			string table, 
-			string keyColumnsString,
-			IEnumerable<T>listToDelete)
+		private string CreateDeleteQuery<T>(IEnumerable<DbValue<T>> dbValues)
 		{
 			StringBuilder sb = new StringBuilder();
-			foreach(var keyDelete in listToDelete)
+			foreach(var dbValue in dbValues)
 			{
-				sb.AppendLine("delete from "+table+" where "+ keyColumnsString +" = '"+keyDelete+"';");
+				sb.AppendLine("delete from " + dbValue.Column.Table + " where " + dbValue.Column.ColumnName + " = " + dbValue + ";");
 			}
 			return sb.ToString();
-		}
-
-		private object GetSelectManager(Type typeKeyColumn)
-		{
-			var genericListType = typeof(SelectManager<>);
-			var specificListType = genericListType.MakeGenericType(typeKeyColumn);
-			return Activator.CreateInstance(specificListType);
 		}
 
 		private IEnumerable<DbColumn> GetColumns(string table)
@@ -168,9 +196,25 @@ namespace SqlDataCompare.Core
 				DbColumn dbColumn = new DbColumn();
 				dbColumn.ColumnName = columnName;
 				dbColumn.ColumnType = databaseMetadata.GetColumnType(table, columnName);
+				dbColumn.Table = table;
 				dbColumns.Add(dbColumn);
 			}
 			return dbColumns;
-		} 
+		}
+
+		private DbColumn GetDbColumn(string table, IEnumerable<string> keyColumns)
+		{
+			IDatabaseMetadata databaseMetadata = new DatabaseMetadata(_sqlConnectionSource);
+
+			var keyColumnsString = string.Join(" + ", keyColumns);
+
+			Type typeColumn = typeof(string);
+			if (keyColumns.Count() == 1)
+			{
+				typeColumn = databaseMetadata.GetColumnType(table, keyColumns.First());
+			}
+			var dbKeyColumn = new DbColumn(table, keyColumnsString, typeColumn);
+			return dbKeyColumn;
+		}
 	}
 }

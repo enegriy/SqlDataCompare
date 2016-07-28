@@ -57,6 +57,8 @@ namespace SqlDataCompare.Core
 				return typeof(int);
 			if (column_type.Equals("nvarchar"))
 				return typeof(string);
+			if (column_type.Equals("decimal"))
+				return typeof (decimal);
 
 			return typeof (string);
 		}

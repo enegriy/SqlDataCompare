@@ -41,15 +41,4 @@ namespace SqlDataCompare.Core
 			return list;
 		}
 	}
-
-	/// <summary>
-	///  Выборка
-	/// </summary>
-	public class SelectManager<T>
-	{
-		public IEnumerable<T> Select(ISqlConnection sqlConnection, string sql)
-		{
-			return new SelectManager(sqlConnection).SelectFirstColumn<T>(sql);
-		}
-	}
 }
