@@ -3,7 +3,7 @@
 	/// <summary>
 	/// Детали для подключения к sql server
 	/// </summary>
-	public class DetailsToConnect
+	public class ServerPassport
 	{
 		/// <summary>
 		/// Имя сервера
@@ -25,7 +25,7 @@
 		/// <summary>
 		/// .Ctor
 		/// </summary>
-		public DetailsToConnect(string serverName, string baseName, string login = "", string password = "")
+		public ServerPassport(string serverName, string baseName, string login = "", string password = "")
 		{
 			ServerName = serverName;
 			BaseName = baseName;

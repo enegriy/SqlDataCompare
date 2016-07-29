@@ -1,5 +1,6 @@
-﻿
-using System;
+﻿using System;
+using System.Data.SqlClient;
+using System.Runtime.Serialization;
 
 namespace SqlDataCompare.Core
 {
@@ -20,7 +21,7 @@ namespace SqlDataCompare.Core
 			}
 			catch (Exception exc)
 			{
-				throw new OperationCanceledException("Ошибка подключения к серверу. Проверьте подключение "+connectionString, exc);
+				throw new BadConnectionStringException("Ошибка подключения к серверу. Проверьте подключение.", exc);
 			}
 			finally
 			{

@@ -5,7 +5,7 @@
 	/// </summary>
 	public class ConnectionStringMaker
 	{
-		private readonly DetailsToConnect _detailsToConnect;
+		private readonly ServerPassport _serverPassport;
 
 		private string _connectionStringWinAuthTemplate =
 			@"Persist Security Info=False;Integrated Security=true;Initial Catalog={1};Server={0}";
@@ -16,9 +16,9 @@
 		/// <summary>
 		/// .Ctor
 		/// </summary>
-		public ConnectionStringMaker(DetailsToConnect detailsToConnect)
+		public ConnectionStringMaker(ServerPassport serverPassport)
 		{
-			_detailsToConnect = detailsToConnect;
+			_serverPassport = serverPassport;
 		}
 
 		/// <summary>
@@ -27,17 +27,17 @@
 		public string GetConnectionString()
 		{
 			string connectionString;
-			if (string.IsNullOrEmpty(_detailsToConnect.Login))
+			if (string.IsNullOrEmpty(_serverPassport.Login))
 			{
 				connectionString = string.Format(
-					_connectionStringWinAuthTemplate,_detailsToConnect.ServerName,_detailsToConnect.BaseName);
+					_connectionStringWinAuthTemplate, _serverPassport.ServerName, _serverPassport.BaseName);
 			}
 			else
 			{
 				connectionString = string.Format(
-					_connectionStringSqlAuthTemplate,_detailsToConnect.ServerName,_detailsToConnect.BaseName,
-					_detailsToConnect.Login,
-					_detailsToConnect.Password);
+					_connectionStringSqlAuthTemplate, _serverPassport.ServerName, _serverPassport.BaseName,
+					_serverPassport.Login,
+					_serverPassport.Password);
 			}
 			return connectionString;
 		}

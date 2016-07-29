@@ -41,7 +41,10 @@ namespace SqlDataCompare.Core
 		}
 	}
 
-	public class DbValue : DbValue<Object>
+	/// <summary>
+	/// Универсальное значение
+	/// </summary>
+	public class DbValue : DbValue<object>
 	{
 		public DbValue(object value, DbColumn column) : base(value, column)
 		{

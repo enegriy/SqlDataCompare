@@ -41,16 +41,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compare\CompareTableManager.cs" />
-    <Compile Include="Compare\DbColumn.cs" />
-    <Compile Include="Compare\DbValue.cs" />
-    <Compile Include="ConnectToServer\CheckValidConnectionString.cs" />
-    <Compile Include="ConnectToServer\ConnectionStringMaker.cs" />
-    <Compile Include="ConnectToServer\DetailsToConnect.cs" />
-    <Compile Include="ConnectToServer\ISqlConnection.cs" />
-    <Compile Include="ConnectToServer\SqlServerConnection.cs" />
-    <Compile Include="DataBase\IDatabaseMetadata.cs" />
+    <Compile Include="DataBase\DbColumn.cs" />
+    <Compile Include="DataBase\DbValue.cs" />
+    <Compile Include="ConnectionString\CheckValidConnectionString.cs" />
+    <Compile Include="ConnectionString\ConnectionStringMaker.cs" />
+    <Compile Include="AboutServer\ServerPassport.cs" />
+    <Compile Include="Exception\BadConnectionString.cs" />
+    <Compile Include="Select\ISelectManager.cs" />
+    <Compile Include="SqlConnection\ISqlConnection.cs" />
+    <Compile Include="SqlConnection\SqlServerConnection.cs" />
+    <Compile Include="DataBase\Metadata\IDbMetadata.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="DataBase\DatabaseMetadata.cs" />
+    <Compile Include="DataBase\Metadata\DbMetadata.cs" />
     <Compile Include="Select\SelectManager.cs" />
   </ItemGroup>
   <ItemGroup />

@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using SqlDataCompare.Core;
+using SqlDataCompare.Core.Select;
 
 namespace SqlDataCompare.Test.Intergration
 {
@@ -9,11 +10,12 @@ namespace SqlDataCompare.Test.Intergration
 		[Test]
 		public void GetTables_IsNotEmpty_Test()
 		{
-			DetailsToConnect detailsToConnect = new DetailsToConnect("192.168.0.22", "RI_BankGuarantee_PROD_COPY","sa","456P@ssw0rd");
-			var connectionStringMaker = new ConnectionStringMaker(detailsToConnect);
+			ServerPassport serverPassport = new ServerPassport("192.168.0.22", "RI_BankGuarantee_PROD_COPY","sa","456P@ssw0rd");
+			var connectionStringMaker = new ConnectionStringMaker(serverPassport);
 
 			ISqlConnection sqlConnection = new SqlServerConnection(connectionStringMaker.GetConnectionString());
-			IDatabaseMetadata databaseMetadata = new DatabaseMetadata(sqlConnection);
+			ISelectManager selectMng = new SelectManager(sqlConnection);
+			IDbMetadata databaseMetadata = new DbMetadata(selectMng);
 
 			Assert.IsNotEmpty(databaseMetadata.GetTables());
 		}

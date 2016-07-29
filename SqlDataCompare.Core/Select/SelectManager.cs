@@ -1,32 +1,37 @@
 ﻿using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
+using SqlDataCompare.Core.Select;
 
 namespace SqlDataCompare.Core
 {
 	/// <summary>
-	/// Выборка
+	/// Выборка из бд
 	/// </summary>
-	public class SelectManager
+	public class SelectManager : ISelectManager
 	{
-		readonly ISqlConnection _sqlConnection;
+		public ISqlConnection Connection { get; set; }
 
-		public SelectManager(ISqlConnection sqlConnection)
+		public SelectManager(ISqlConnection connection)
 		{
-			_sqlConnection = sqlConnection;
+			Connection = connection;
+		}
+
+		public SelectManager()
+		{
 		}
 
 		public IEnumerable<T> SelectFirstColumn<T>(string sql)
 		{
 			IList<T> list = new List<T>();
 
-			_sqlConnection.Open();
+			Connection.Open();
 			try
 			{
 				var command = new SqlCommand(
-					string.Format(sql, _sqlConnection.Database));
+					string.Format(sql, Connection.Database));
 
-				command.Connection = _sqlConnection.Connection as SqlConnection;
+				command.Connection = Connection.Connection as SqlConnection;
 
 				var reader = command.ExecuteReader();
 				while (reader.Read())
@@ -36,7 +41,7 @@ namespace SqlDataCompare.Core
 			}
 			finally
 			{
-				_sqlConnection.Close();
+				Connection.Close();
 			}
 			return list;
 		}

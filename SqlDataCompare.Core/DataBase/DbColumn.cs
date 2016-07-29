@@ -2,6 +2,9 @@
 
 namespace SqlDataCompare.Core
 {
+	/// <summary>
+	/// Колонка
+	/// </summary>
 	public class DbColumn
 	{
 		/// <summary>
@@ -18,10 +21,9 @@ namespace SqlDataCompare.Core
 		/// </summary>
 		public Type ColumnType { get; set; }
 
+
 		public DbColumn()
-		{
-			
-		}
+		{}
 
 		public DbColumn(string table,string columnName, Type columnType)
 		{
